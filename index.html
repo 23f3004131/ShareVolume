@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CarMax - Stock Shares Outstanding</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f9;
+            color: #333;
+        }
+        h1 {
+            color: #0056b3;
+        }
+        .stats {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .stats div {
+            margin-bottom: 10px;
+        }
+        .label {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1 id="share-entity-name">CarMax - Stock Shares Outstanding</h1>
+    <div class="stats">
+        <div><span class="label">Maximum Shares Outstanding:</span> <span id="share-max-value"></span> (FY <span id="share-max-fy"></span>)</div>
+        <div><span class="label">Minimum Shares Outstanding:</span> <span id="share-min-value"></span> (FY <span id="share-min-fy"></span>)</div>
+    </div>
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            const defaultCIK = '0001170010';
+            const queryParams = new URLSearchParams(window.location.search);
+            const CIK = queryParams.get('CIK') || defaultCIK;
+            const apiUrl = `https://data.sec.gov/api/xbrl/companyconcept/CIK${CIK}/dei/EntityCommonStockSharesOutstanding.json`;
+            const userAgent = 'Mozilla/5.0 (compatible; MyApp/1.0; +https://example.com)';
+
+            fetch(apiUrl, {
+                headers: { 'User-Agent': userAgent }
+            })
+            .then(response => response.json())
+            .then(data => {
+                const entityName = data.entityName || 'Unknown Entity';
+                const shares = data.units.shares.filter(entry => entry.fy > '2020' && typeof entry.val === 'number');
+
+                if (shares.length === 0) {
+                    console.error('No valid shares data found.');
+                    return;
+                }
+
+                const maxEntry = shares.reduce((max, entry) => entry.val > max.val ? entry : max, shares[0]);
+                const minEntry = shares.reduce((min, entry) => entry.val < min.val ? entry : min, shares[0]);
+
+                document.getElementById('share-entity-name').textContent = entityName + ' - Stock Shares Outstanding';
+                document.title = entityName + ' - Stock Shares Outstanding';
+                document.getElementById('share-max-value').textContent = maxEntry.val;
+                document.getElementById('share-max-fy').textContent = maxEntry.fy;
+                document.getElementById('share-min-value').textContent = minEntry.val;
+                document.getElementById('share-min-fy').textContent = minEntry.fy;
+
+                // Save data.json
+                const dataJson = {
+                    entityName,
+                    max: { val: maxEntry.val, fy: maxEntry.fy },
+                    min: { val: minEntry.val, fy: minEntry.fy }
+                };
+                console.log('data.json:', JSON.stringify(dataJson));
+            })
+            .catch(error => console.error('Error fetching data:', error));
+        });
+    </script>
+</body>
+</html>
